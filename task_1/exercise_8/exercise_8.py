@@ -3,6 +3,8 @@ import string
 from collections.abc import Iterable
 from typing import Dict, List, Optional
 
+from pycurl import PASSWORD
+
 """
 № 1 Реализовать класс MultiTempAttributes, который позволяет временно изменять значения атрибутов объекта.
 Этот класс должен поддерживать контекстный менеджер, который изменяет указанные атрибуты объекта на новые значения,
@@ -22,7 +24,19 @@ __exit__(self, exc_type, exc_value, traceback): Метод, который во�
 
 # Контекстный менеджер
 class MultiTempAttributes:
-    pass
+    def __init__(self, obj, attrs_values):
+        self.__to_save = dict()
+        self.__to_load = attrs_values
+        self.__target = obj
+
+    def __enter__(self):
+        for pair in self.__to_load.items():
+            self.__to_save[pair[0]] = getattr(self.__target, pair[0])
+            setattr(self.__target, pair[0], pair[1])
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for pair in self.__to_save.items():
+            setattr(pair[0], pair[1])
 
 
 """
@@ -39,7 +53,30 @@ class MultiTempAttributes:
 
 
 def count_unique_words(text: str) -> int:
-    pass
+    text = text.lower()
+    for i in range(len(text)-1, -1, -1):
+        if text[i] in ",.?!:;&":
+            text = text[0:i] + text[i+1:]
+    text = text.split()
+    if len(text) > 0:
+        all_words = [text[0]]
+        counts = [0]
+
+        for cur_word in text:
+            flag = True
+            for i in range(0, len(all_words)):
+                if all_words[i] == cur_word:
+                    counts[i] = counts[i] + 1
+                    flag = False
+                    break
+            if flag:
+                all_words.append(cur_word)
+                counts.append(1)
+        if type(counts.count(1)) == type(None):
+            return 0
+        else:
+            return counts.count(1)
+
 
 
 """
@@ -60,8 +97,28 @@ numbers: Список целых чисел.
 
 
 def analyze_even_numbers(numbers: List[int]) -> Dict[str, Optional[float]]:
-    pass
+    count = 0
+    sum = 0
+    max = 0
+    min = 0
+    flag = True
+    for num in numbers:
+        if num % 2 == 0:
+            count = count + 1
+            sum = sum + num
+            if flag:
+                max = num
+                min = num
+                flag = False
+            if max < num:
+                max = num
+            elif min > num:
+                min = num
 
+    if count == 0:
+        return({"count":count, "sum": None, "average": None, "max": None, "min": None})
+    else:
+        return ({"count": count, "sum": sum, "average": sum/count, "max": max, "min": min})
 
 """
 № 4 Проверка уникальности элементов в вложенных структурах данных
@@ -81,8 +138,53 @@ def analyze_even_numbers(numbers: List[int]) -> Dict[str, Optional[float]]:
 
 def all_unique_elements(data) -> bool:
     def flatten(d):
-        """Вспомогательная функция для рекурсивного разворачивания вложенных структур"""
-        pass
+        """Вспомогательная функция для рекурсивного разворачивания вложенных структур.
+            Возвратит строку
+            При раскрытии коллекции пишет, что это за коллекция в возвращаемую строку.
+        """
+        result = ""
+        for item in d:
+
+            if type(d) == dict:
+                result = result + str(type(dict)) + str(item)
+                if type(item) == str or type(item) == int:
+                    result = result + str(item)
+                elif item is not None:
+                    result = result + str(type(item)) + flatten(item)
+
+            elif type(item) == str or type(item) == int:
+                result = result + str(item)
+
+            elif item is not None:
+                result = result + str(type(item)) + flatten(item)
+        return(result)
+
+    previous = []
+
+    if type(data) == set:
+        return True
+
+    for a in data:
+        if type(a) != type(None):
+            for b in previous:
+                if type(a) == type(b):
+                    if type(a) == int or type(a) == float:
+                        if int(a) == int(b):
+                            return False
+                    elif len(a) == len(b):
+                        if type(a) == str:
+                            if a == b:
+                                return False
+                        else:
+                            if flatten(a) == flatten(b):
+                               return False
+                elif int(a) == int(b):
+                    return False
+            previous.append(a)
+
+
+    return True
+
 
 
 """
@@ -104,10 +206,34 @@ recursive (bool, по умолчанию False): если True, функция �
 
 
 def enumerate_list(
-    data: list, start: int = 0, step: int = 1, recursive: bool = False
+        data: list, start: int = 0, step: int = 1, recursive: bool = False
 ) -> list:
     def recursive_enumerate(lst, idx):
-        pass
+        result = []
+        for item in lst:
+            if type(item) == str:
+                result.append((idx, item))
+                idx = idx + 1
+            else:
+                idx = idx + 1
+                result.append((idx - 1, recursive_enumerate(item, idx)))
+        return result
+
+    new_data = []
+    for item in data:
+        # Обрабатываем список рекурсивно
+        if recursive and type(item) != str:
+            start = start + 1
+            new_data.append((start - 1, recursive_enumerate(item, start)))
+
+        # Обрабатываем строку, или НЕ обрабатываем список рекурсивно
+        else:
+            new_data.append((start, item))
+            start = start + step
+    return new_data
+
+
+
 
 
 """
@@ -136,4 +262,35 @@ logging.basicConfig(level=logging.INFO)
 
 
 class DatabaseConnection:
-    pass
+
+    def __init__(self, db_name):
+        self.connection = None
+        self.transaction_active = False
+        self.__name = db_name
+
+    def __enter__(self):
+        self.connect()
+        pass
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.transaction_active = False
+        self.connection = None
+        #close + errors
+        pass
+    def connect(self):
+        self.connection = "Connected to " + self.__name + " database"
+
+    def execute_query(self, query):
+        if self.transaction_active:
+            return "Result of \'" + query + "\'"
+        else:
+            raise RuntimeError("No active transaction")
+
+
+
+    def start_transaction(self):
+        self.transaction_active = True
+    def commit(self):
+        if self.transaction_active:
+            self.transaction_active = False
+        else:
+            raise RuntimeError("No active transaction to commit")
