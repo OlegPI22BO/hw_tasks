@@ -36,7 +36,7 @@ class MultiTempAttributes:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         for pair in self.__to_save.items():
-            setattr(pair[0], pair[1])
+            setattr(self.__target, pair[0], pair[1])
 
 
 """
@@ -75,7 +75,8 @@ def count_unique_words(text: str) -> int:
         if type(counts.count(1)) == type(None):
             return 0
         else:
-            return counts.count(1)
+            return len(counts)
+    return 0
 
 
 
